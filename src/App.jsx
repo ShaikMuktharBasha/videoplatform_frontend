@@ -8,6 +8,9 @@ import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import Upload from './pages/Upload';
 import VideoPlayer from './pages/VideoPlayer';
+import LikedVideos from './pages/LikedVideos';
+import DislikedVideos from './pages/DislikedVideos';
+import SavedVideos from './pages/SavedVideos';
 import Layout from './components/Layout';
 
 function App() {
@@ -37,6 +40,33 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            <Route
+              path="/liked"
+              element={
+                <ProtectedRoute>
+                  <LikedVideos />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/disliked"
+              element={
+                <ProtectedRoute>
+                  <DislikedVideos />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/saved"
+              element={
+                <ProtectedRoute>
+                  <SavedVideos />
+                </ProtectedRoute>
+              }
+            />
             
             <Route
               path="/upload"
@@ -52,32 +82,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <VideoPlayer />
-                </ProtectedRoute>
-              }
-            />
-            
-            {/* Placeholders for new routes */}
-            <Route
-              path="/liked"
-              element={
-                <ProtectedRoute>
-                  <Home />  {/* Reuse Home for now, will filter later */}
-                </ProtectedRoute>
-              }
-            />
-             <Route
-              path="/disliked"
-              element={
-                <ProtectedRoute>
-                  <Home /> {/* Placeholder */}
-                </ProtectedRoute>
-              }
-            />
-             <Route
-              path="/saved"
-              element={
-                <ProtectedRoute>
-                  <Home /> {/* Placeholder */}
                 </ProtectedRoute>
               }
             />

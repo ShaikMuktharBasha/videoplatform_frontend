@@ -53,6 +53,9 @@ export const videoAPI = {
     return api.get('/videos', { params });
   },
   getPublic: () => api.get('/videos/public'),
+  getLiked: () => api.get('/videos/liked'),
+  getDisliked: () => api.get('/videos/disliked'),
+  getSaved: () => api.get('/videos/saved'),
   getById: (id) => api.get(`/videos/${id}`),
   delete: (id) => api.delete(`/videos/${id}`),
   getStreamUrl: (id) => {
@@ -60,6 +63,8 @@ export const videoAPI = {
     return `${API_URL}/videos/stream/${id}?token=${token}`;
   },
   toggleLike: (id) => api.post(`/videos/${id}/like`),
+  toggleDislike: (id) => api.post(`/videos/${id}/dislike`),
+  toggleSave: (id) => api.post(`/videos/${id}/save`),
   addView: (id) => api.post(`/videos/${id}/view`),
   getComments: (videoId) => api.get(`/videos/${videoId}/comments`),
   addComment: (videoId, content) => api.post(`/videos/${videoId}/comments`, { content }),

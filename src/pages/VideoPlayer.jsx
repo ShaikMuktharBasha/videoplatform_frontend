@@ -3,13 +3,18 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { videoAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Comments from '../components/Comments';
+import { HandThumbUpIcon, HandThumbDownIcon, BookmarkIcon } from '@heroicons/react/24/outline';
+import { HandThumbUpIcon as HandThumbUpSolid, HandThumbDownIcon as HandThumbDownSolid, BookmarkIcon as BookmarkSolid } from '@heroicons/react/24/solid';
 
 const VideoPlayer = () => {
   const [video, setVideo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [likes, setLikes] = useState(0);
+  const [dislikes, setDislikes] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
+  const [isDisliked, setIsDisliked] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [views, setViews] = useState(0);
   
   const { id } = useParams();
@@ -31,8 +36,11 @@ const VideoPlayer = () => {
       const videoData = response.data.video;
       setVideo(videoData);
       setLikes(videoData.likes?.length || 0);
+      setDislikes(videoData.dislikes?.length || 0);
       setViews(videoData.views || 0);
       setIsLiked(videoData.likes?.includes(user?._id) || false);
+      setIsDisliked(videoData.dislikes?.includes(user?._id) || false);
+      setIsSaved(videoData.isSaved || false);
 
       // Increment view count
       try {
@@ -54,9 +62,32 @@ const VideoPlayer = () => {
     try {
       const response = await videoAPI.toggleLike(video._id);
       setLikes(response.data.likes);
+      setDislikes(response.data.dislikes);
       setIsLiked(response.data.isLiked);
+      setIsDisliked(response.data.isDisliked);
     } catch (error) {
       console.error('Error toggling like:', error);
+    }
+  };
+
+  const handleDislike = async () => {
+    try {
+      const response = await videoAPI.toggleDislike(video._id);
+      setLikes(response.data.likes);
+      setDislikes(response.data.dislikes);
+      setIsLiked(response.data.isLiked);
+      setIsDisliked(response.data.isDisliked);
+    } catch (error) {
+      console.error('Error toggling dislike:', error);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      const response = await videoAPI.toggleSave(video._id);
+      setIsSaved(response.data.isSaved);
+    } catch (error) {
+      console.error('Error toggling save:', error);
     }
   };
 
@@ -147,19 +178,46 @@ const VideoPlayer = () => {
                   </div>
                   {getSensitivityBadge(video.sensitivityStatus)}
                 </div>
-                <button 
-                  onClick={handleLike}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-full border transition-colors ${
-                    isLiked 
-                      ? 'bg-red-50 border-red-200 text-red-600 dark:bg-red-900/30 dark:border-red-800/50 dark:text-red-400' 
-                      : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <span className="text-xl">{isLiked ? '♥' : '♡'}</span>
-                  <span className="font-medium">{likes}</span>
-                </button>
-              </div>
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={handleLike}
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border transition-colors ${
+                      isLiked 
+                        ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-900/30 dark:border-blue-800/50 dark:text-blue-400' 
+                        : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'
+                    }`}
+                    title="Like"
+                  >
+                    {isLiked ? <HandThumbUpSolid className="w-5 h-5" /> : <HandThumbUpIcon className="w-5 h-5" />}
+                    <span className="font-medium">{likes}</span>
+                  </button>
 
+                  <button 
+                    onClick={handleDislike}
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border transition-colors ${
+                      isDisliked 
+                        ? 'bg-red-50 border-red-200 text-red-600 dark:bg-red-900/30 dark:border-red-800/50 dark:text-red-400' 
+                        : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'
+                    }`}
+                    title="Dislike"
+                  >
+                    {isDisliked ? <HandThumbDownSolid className="w-5 h-5" /> : <HandThumbDownIcon className="w-5 h-5" />}
+                    {dislikes > 0 && <span className="font-medium">{dislikes}</span>}
+                  </button>
+
+                  <button 
+                    onClick={handleSave}
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border transition-colors ${
+                      isSaved 
+                        ? 'bg-yellow-50 border-yellow-200 text-yellow-600 dark:bg-yellow-900/30 dark:border-yellow-800/50 dark:text-yellow-400' 
+                        : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'
+                    }`}
+                    title="Save"
+                  >
+                    {isSaved ? <BookmarkSolid className="w-5 h-5" /> : <BookmarkIcon className="w-5 h-5" />}
+                    <span className="font-medium hidden sm:inline">{isSaved ? 'Saved' : 'Save'}</span>
+                  </button>
+                </div>
               {video.description && (
                 <div className="mt-4">
                   <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</h3>
