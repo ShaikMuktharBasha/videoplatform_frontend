@@ -15,6 +15,10 @@ const VideoPlayer = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  
+  // Get base URL for video preview
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const BASE_URL = API_URL.replace('/api', '');
 
   useEffect(() => {
     fetchVideo();
@@ -123,7 +127,8 @@ const VideoPlayer = () => {
                 controls
                 className="w-full bg-black"
                 style={{ maxHeight: '600px' }}
-                src={videoAPI.getStreamUrl(video._id)}
+                // Use standard static file serving if streaming endpoint fails or is complex
+                src={`${BASE_URL}/uploads/${video.filename}`}
               >
                 Your browser does not support the video tag.
               </video>
