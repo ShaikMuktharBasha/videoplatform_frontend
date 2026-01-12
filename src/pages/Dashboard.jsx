@@ -265,7 +265,7 @@ const Dashboard = () => {
               >
                 {/* Video Preview */}
                 <div 
-                  className="relative aspect-video mb-4 bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center"
+                  className="relative aspect-video mb-4 bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center bg-zinc-800"
                   onMouseEnter={() => handleMouseEnter(video._id)}
                   onMouseLeave={() => handleMouseLeave(video._id)}
                 >
@@ -279,12 +279,12 @@ const Dashboard = () => {
                         muted
                         loop
                         playsInline
-                        onLoadedMetadata={(e) => {
+                        onLoadedData={(e) => {
                            // Seek a bit into the video to avoid black frames (e.g. 1 second)
-                           e.target.currentTime = 1.0;
+                           if (e.target.currentTime === 0) {
+                             e.target.currentTime = 1.0;
+                           }
                         }}
-                        onMouseEnter={() => handleMouseEnter(video._id)}
-                        onMouseLeave={() => handleMouseLeave(video._id)}
                       />
                        {/* Play Button Overlay - Fades out on hover */}
                        <div className={`absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-300 pointer-events-none ${hoveredVideoId === video._id ? 'opacity-0' : 'opacity-100'}`}>
