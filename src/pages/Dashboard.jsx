@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { videoAPI } from '../services/api';
@@ -11,6 +11,8 @@ const Dashboard = () => {
   const [filter, setFilter] = useState('all');
   const { isEditor, user } = useAuth();
   const navigate = useNavigate();
+  const videoRefs = useRef({});
+
   // Get base URL for video preview
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
   const BASE_URL = API_URL.replace('/api', '');
@@ -18,6 +20,24 @@ const Dashboard = () => {
   useEffect(() => {
     fetchVideos();
   }, [filter, user]); // Re-fetch/update if user changes
+
+  const handleMouseEnter = (id) => {
+    if (videoRefs.current[id]) {
+      videoRefs.current[id].play().catch(error => {
+        // Autoplay might be blocked by browser policy (must be muted)
+        console.log("Preview play failed:", error);
+      });
+    }
+  };
+
+  const handleMouseLeave = (id) => {
+    if (videoRefs.current[id]) {
+        videoRefs.current[id].pause();
+        // Reset to initial title card frame (0.5s)
+        videoRefs.current[id].currentTime = 0.5;
+    }
+  };
+
 
   const fetchVideos = async () => {
     try {
@@ -241,17 +261,25 @@ const Dashboard = () => {
                 onClick={() => navigate(`/video/${video._id}`)}
               >
                 {/* Video Preview */}
-                <div className="relative aspect-video mb-4 bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center">
+                <div 
+                  className="relative aspect-video mb-4 bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center"
+                  onMouseEnter={() => handleMouseEnter(video._id)}
+                  onMouseLeave={() => handleMouseLeave(video._id)}
+                >
                   {video.processingStatus === 'completed' ? (
                     <>
                       <video 
+                        ref={el => videoRefs.current[video._id] = el}
                         src={`${BASE_URL}/uploads/${video.filename}#t=0.5`}
                         className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
                         preload="metadata"
+                        muted
+                        loop
+                        playsInline
                       />
-                       {/* Play Button Overlay */}
-                       <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition-colors">
-                          <PlayCircleIcon className="w-16 h-16 text-white opacity-90 group-hover:scale-110 transition-transform drop-shadow-lg" />
+                       {/* Play Button Overlay - Opacity changes on hover to reveal video */}
+                       <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-transparent transition-all pointer-events-none">
+                          <PlayCircleIcon className="w-16 h-16 text-white opacity-90 group-hover:opacity-0 transition-opacity drop-shadow-lg" />
                        </div>
                     </>
                   ) : (
