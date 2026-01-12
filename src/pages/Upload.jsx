@@ -85,9 +85,10 @@ const Upload = () => {
         return;
       }
       
-      // Validate file size (500MB max)
-      if (selectedFile.size > 500 * 1024 * 1024) {
-        setError('File size must be less than 500MB');
+      // Validate file size (4.5MB max for Vercel/Serverless)
+      const maxSize = 4.5 * 1024 * 1024; // 4.5MB
+      if (selectedFile.size > maxSize) {
+        setError('File size must be less than 4.5MB (Vercel Serverless Limit). For larger files, please configure cloud storage.');
         return;
       }
       
