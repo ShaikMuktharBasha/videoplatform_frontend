@@ -270,16 +270,22 @@ const Dashboard = () => {
                     <>
                       <video 
                         ref={el => videoRefs.current[video._id] = el}
-                        src={`${BASE_URL}/uploads/${video.filename}#t=0.5`}
-                        className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+                        src={`${BASE_URL}/uploads/${video.filename}#t=1.0`}
+                        className="w-full h-full object-cover group-hover:opacity-100 transition-opacity"
                         preload="metadata"
                         muted
                         loop
                         playsInline
+                        onLoadedData={(e) => {
+                          // Fallback to ensure we have a frame
+                          if (e.target.currentTime === 0) {
+                            e.target.currentTime = 1.0;
+                          }
+                        }}
                       />
                        {/* Play Button Overlay - Opacity changes on hover to reveal video */}
-                       <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-transparent transition-all pointer-events-none">
-                          <PlayCircleIcon className="w-16 h-16 text-white opacity-90 group-hover:opacity-0 transition-opacity drop-shadow-lg" />
+                       <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-transparent transition-all pointer-events-none">
+                          <PlayCircleIcon className="w-16 h-16 text-white/90 group-hover:opacity-0 transition-opacity drop-shadow-xl" />
                        </div>
                     </>
                   ) : (
