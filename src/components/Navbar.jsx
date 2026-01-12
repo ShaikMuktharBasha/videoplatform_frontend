@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ThemeToggle from './ThemeToggle';
+import logo from '../images/logo.png';
 
 const Navbar = () => {
   const { user, logout, isEditor } = useAuth();
@@ -16,9 +17,7 @@ const Navbar = () => {
       <div className="max-w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link to={isEditor ? "/dashboard" : "/"} className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">V</span>
-            </div>
+            <img src={logo} alt="Logo" className="w-10 h-10 object-contain" />
             <span className="text-xl font-bold text-gray-900 dark:text-white hidden sm:block">Video Platform</span>
           </Link>
 

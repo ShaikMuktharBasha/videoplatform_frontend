@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
+import logo from '../images/logo.png';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -48,9 +49,7 @@ const Login = () => {
       </div>
       <div className="card max-w-md w-full">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-3xl">V</span>
-          </div>
+          <img src={logo} alt="Logo" className="w-24 h-24 mx-auto mb-4 object-contain" />
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome Back</h2>
           <p className="text-gray-600 dark:text-gray-400 mt-2">Login to your account</p>
         </div>
