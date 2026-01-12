@@ -273,27 +273,21 @@ const Dashboard = () => {
                     <>
                       <video 
                         ref={el => videoRefs.current[video._id] = el}
-                        src={`${BASE_URL}/uploads/${video.filename}#t=1.0`}
-                        className="w-full h-full object-cover group-hover:opacity-100 transition-opacity"
+                        src={`${BASE_URL}/uploads/${video.filename}`}
+                        className="w-full h-full object-cover transition-opacity duration-300"
                         preload="metadata"
                         muted
                         loop
                         playsInline
-                        controls={hoveredVideoId === video._id}
-                        onClick={(e) => {
-                          if (hoveredVideoId === video._id) {
-                            e.stopPropagation();
-                          }
+                        onLoadedMetadata={(e) => {
+                           // Seek a bit into the video to avoid black frames (e.g. 1 second)
+                           e.target.currentTime = 1.0;
                         }}
-                        onLoadedData={(e) => {
-                          // Fallback to ensure we have a frame
-                          if (e.target.currentTime === 0) {
-                            e.target.currentTime = 1.0;
-                          }
-                        }}
+                        onMouseEnter={() => handleMouseEnter(video._id)}
+                        onMouseLeave={() => handleMouseLeave(video._id)}
                       />
-                       {/* Play Button Overlay - Opacity changes on hover to reveal video */}
-                       <div className={`absolute inset-0 flex items-center justify-center bg-black/10 transition-all pointer-events-none ${hoveredVideoId === video._id ? 'opacity-0' : 'opacity-100'}`}>
+                       {/* Play Button Overlay - Fades out on hover */}
+                       <div className={`absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-300 pointer-events-none ${hoveredVideoId === video._id ? 'opacity-0' : 'opacity-100'}`}>
                           <PlayCircleIcon className="w-16 h-16 text-white/90 drop-shadow-xl" />
                        </div>
                     </>
