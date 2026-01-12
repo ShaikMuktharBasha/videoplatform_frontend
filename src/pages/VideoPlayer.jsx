@@ -29,6 +29,21 @@ const VideoPlayer = () => {
     fetchVideo();
   }, [id]);
 
+  const formatDuration = (seconds) => {
+    if (!seconds) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   const fetchVideo = async () => {
     try {
       setLoading(true);
@@ -218,6 +233,8 @@ const VideoPlayer = () => {
                     <span className="font-medium hidden sm:inline">{isSaved ? 'Saved' : 'Save'}</span>
                   </button>
                 </div>
+              </div>
+
               {video.description && (
                 <div className="mt-4">
                   <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</h3>
