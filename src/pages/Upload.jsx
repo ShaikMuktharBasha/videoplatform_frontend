@@ -85,10 +85,10 @@ const Upload = () => {
         return;
       }
       
-      // Validate file size (4.5MB max for Vercel/Serverless)
-      const maxSize = 4.5 * 1024 * 1024; // 4.5MB
+      // Validate file size (5MB max for Vercel Free Tier)
+      const maxSize = 5 * 1024 * 1024; // 5MB
       if (selectedFile.size > maxSize) {
-        setError('File size must be less than 4.5MB (Vercel Serverless Limit). For larger files, please configure cloud storage.');
+        setError('File size must be less than 5MB (Vercel Free Tier Limit).');
         return;
       }
       
@@ -155,7 +155,7 @@ const Upload = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Video File *
+                  Video File * <span className="text-xs text-gray-500 font-normal">(Max 5MB)</span>
                 </label>
                 <input
                   type="file"
