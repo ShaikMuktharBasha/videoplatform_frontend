@@ -304,3 +304,9 @@ const VideoPlayer = () => {
 };
 
 export default VideoPlayer;
+      </div>
+    </div>
+  );
+};
+
+export default VideoPlayer;
