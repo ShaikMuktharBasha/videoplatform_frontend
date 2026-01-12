@@ -33,10 +33,15 @@ const Dashboard = () => {
   };
 
   const handleMouseLeave = (id) => {
+    // Check for fullscreen
+    if (document.fullscreenElement && document.fullscreenElement === videoRefs.current[id]) {
+      return; 
+    }
+    
     setHoveredVideoId(null);
     if (videoRefs.current[id]) {
         videoRefs.current[id].pause();
-        // Reset to initial title card frame (0.5s)
+        // Reset to initial title card frame (1.0s)
         videoRefs.current[id].currentTime = 1.0;
     }
   };
@@ -284,6 +289,12 @@ const Dashboard = () => {
                            if (e.target.currentTime === 0) {
                              e.target.currentTime = 1.0;
                            }
+                        }}
+                        controls={hoveredVideoId === video._id}
+                        controlsList="nodownload" 
+                        onClick={(e) => {
+                          // Allow clicking controls without triggering card nav
+                          e.stopPropagation();
                         }}
                       />
                        {/* Play Button Overlay - Fades out on hover */}
