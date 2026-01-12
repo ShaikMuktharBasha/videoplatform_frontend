@@ -24,25 +24,44 @@ const Dashboard = () => {
 
   const handleMouseEnter = (id) => {
     setHoveredVideoId(id);
+    
+    // Stop all other videos to prevent multiple playback
+    Object.keys(videoRefs.current).forEach(key => {
+      const vid = videoRefs.current[key];
+      if (String(key) !== String(id) && vid) {
+        vid.pause();
+        try {
+          vid.currentTime = 1.0;
+        } catch(e) { /* ignore */ }
+      }
+    });
+
     if (videoRefs.current[id]) {
-      videoRefs.current[id].play().catch(error => {
-        // Autoplay might be blocked by browser policy (must be muted)
-        console.log("Preview play failed:", error);
-      });
+      const playPromise = videoRefs.current[id].play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          // Autoplay might be blocked by browser policy or interrupted
+           // console.log("Preview play failed:", error);
+        });
+      }
     }
   };
 
   const handleMouseLeave = (id) => {
-    // Check for fullscreen
-    if (document.fullscreenElement && document.fullscreenElement === videoRefs.current[id]) {
+    const vid = videoRefs.current[id];
+    
+    // Check for fullscreen - if this video is fullscreen, don't stop it
+    if (vid && document.fullscreenElement && document.fullscreenElement === vid) {
       return; 
     }
     
     setHoveredVideoId(null);
-    if (videoRefs.current[id]) {
-        videoRefs.current[id].pause();
-        // Reset to initial title card frame (1.0s)
-        videoRefs.current[id].currentTime = 1.0;
+    if (vid) {
+        vid.pause();
+        try {
+          // Reset to initial title card frame (1.0s)
+          vid.currentTime = 1.0;
+        } catch(e) { /* ignore */ }
     }
   };
 
