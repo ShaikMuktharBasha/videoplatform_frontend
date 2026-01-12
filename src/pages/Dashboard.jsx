@@ -12,6 +12,7 @@ const Dashboard = () => {
   const { isEditor, user } = useAuth();
   const navigate = useNavigate();
   const videoRefs = useRef({});
+  const [hoveredVideoId, setHoveredVideoId] = useState(null);
 
   // Get base URL for video preview
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -22,6 +23,7 @@ const Dashboard = () => {
   }, [filter, user]); // Re-fetch/update if user changes
 
   const handleMouseEnter = (id) => {
+    setHoveredVideoId(id);
     if (videoRefs.current[id]) {
       videoRefs.current[id].play().catch(error => {
         // Autoplay might be blocked by browser policy (must be muted)
@@ -31,10 +33,11 @@ const Dashboard = () => {
   };
 
   const handleMouseLeave = (id) => {
+    setHoveredVideoId(null);
     if (videoRefs.current[id]) {
         videoRefs.current[id].pause();
         // Reset to initial title card frame (0.5s)
-        videoRefs.current[id].currentTime = 0.5;
+        videoRefs.current[id].currentTime = 1.0;
     }
   };
 
@@ -276,6 +279,12 @@ const Dashboard = () => {
                         muted
                         loop
                         playsInline
+                        controls={hoveredVideoId === video._id}
+                        onClick={(e) => {
+                          if (hoveredVideoId === video._id) {
+                            e.stopPropagation();
+                          }
+                        }}
                         onLoadedData={(e) => {
                           // Fallback to ensure we have a frame
                           if (e.target.currentTime === 0) {
@@ -284,8 +293,8 @@ const Dashboard = () => {
                         }}
                       />
                        {/* Play Button Overlay - Opacity changes on hover to reveal video */}
-                       <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-transparent transition-all pointer-events-none">
-                          <PlayCircleIcon className="w-16 h-16 text-white/90 group-hover:opacity-0 transition-opacity drop-shadow-xl" />
+                       <div className={`absolute inset-0 flex items-center justify-center bg-black/10 transition-all pointer-events-none ${hoveredVideoId === video._id ? 'opacity-0' : 'opacity-100'}`}>
+                          <PlayCircleIcon className="w-16 h-16 text-white/90 drop-shadow-xl" />
                        </div>
                     </>
                   ) : (

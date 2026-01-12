@@ -8,6 +8,7 @@ const Upload = () => {
     description: ''
   });
   const [file, setFile] = useState(null);
+  const [fileDuration, setFileDuration] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [visualProgress, setVisualProgress] = useState(0); // For smooth animation
@@ -94,6 +95,15 @@ const Upload = () => {
       
       setFile(selectedFile);
       setError('');
+
+      // Extract duration
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = function() {
+        window.URL.revokeObjectURL(video.src);
+        setFileDuration(video.duration);
+      }
+      video.src = URL.createObjectURL(selectedFile);
     }
   };
 
@@ -118,6 +128,9 @@ const Upload = () => {
     uploadFormData.append('video', file);
     uploadFormData.append('title', formData.title);
     uploadFormData.append('description', formData.description);
+    if (fileDuration) {
+      uploadFormData.append('duration', Math.round(fileDuration));
+    }
 
     try {
       const response = await videoAPI.upload(uploadFormData, (progressEvent) => {
