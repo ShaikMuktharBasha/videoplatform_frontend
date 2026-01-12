@@ -158,8 +158,9 @@ const VideoPlayer = () => {
             <div className="card p-0 overflow-hidden">
               <video
                 controls
-                className="w-full bg-black"
-                style={{ maxHeight: '600px' }}
+                autoPlay
+                className="w-full bg-black aspect-video object-contain"
+                style={{ maxHeight: '70vh' }}
                 // Use standard static file serving if streaming endpoint fails or is complex
                 src={`${BASE_URL}/uploads/${video.filename}`}
               >

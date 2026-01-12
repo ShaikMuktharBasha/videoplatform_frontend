@@ -245,7 +245,7 @@ const Dashboard = () => {
                   {video.processingStatus === 'completed' ? (
                     <>
                       <video 
-                        src={`${BASE_URL}/uploads/${video.filename}`}
+                        src={`${BASE_URL}/uploads/${video.filename}#t=0.5`}
                         className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
                         preload="metadata"
                       />
