@@ -162,7 +162,8 @@ const VideoPlayer = () => {
                 className="w-full bg-black aspect-video object-contain"
                 style={{ maxHeight: '70vh' }}
                 // Use standard static file serving if streaming endpoint fails or is complex
-                src={`${BASE_URL}/uploads/${video.filename}`}
+                // Check if filepath is a full URL (Cloudinary) or local filename
+                src={video.filepath && video.filepath.startsWith('http') ? video.filepath : `${BASE_URL}/uploads/${video.filename}`}
               >
                 Your browser does not support the video tag.
               </video>

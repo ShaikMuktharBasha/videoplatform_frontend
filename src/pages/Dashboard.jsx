@@ -297,7 +297,7 @@ const Dashboard = () => {
                     <>
                       <video 
                         ref={el => videoRefs.current[video._id] = el}
-                        src={`${BASE_URL}/uploads/${video.filename}`}
+                        src={video.filepath && video.filepath.startsWith('http') ? video.filepath : `${BASE_URL}/uploads/${video.filename}`}
                         className="w-full h-full object-cover transition-opacity duration-300"
                         preload="metadata"
                         muted
