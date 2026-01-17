@@ -21,10 +21,10 @@ const Sidebar = () => {
 
   const navItems = [
     { name: 'Feed', path: '/', icon: HomeIcon },
-    { name: 'My Videos', path: '/dashboard', icon: VideoCameraIcon },
-    { name: 'Liked Videos', path: '/liked', icon: HandThumbUpIcon },
-    { name: 'Disliked Videos', path: '/disliked', icon: HandThumbDownIcon },
-    { name: 'Saved Videos', path: '/saved', icon: BookmarkIcon },
+    { name: 'My Content', path: '/dashboard', icon: VideoCameraIcon },
+    { name: 'Liked Content', path: '/liked', icon: HandThumbUpIcon },
+    { name: 'Disliked Content', path: '/disliked', icon: HandThumbDownIcon },
+    { name: 'Saved Content', path: '/saved', icon: BookmarkIcon },
   ];
 
   return (
@@ -48,7 +48,7 @@ const Sidebar = () => {
            <div className="mt-8 px-6">
              <Link to="/upload" className="w-full flex items-center justify-center space-x-2 btn-primary py-2 rounded-lg">
                 <ArrowUpTrayIcon className="w-5 h-5" />
-                <span>Upload Video</span>
+                <span>Upload Content</span>
              </Link>
            </div>
         ) : null}

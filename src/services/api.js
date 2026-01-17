@@ -71,4 +71,29 @@ export const videoAPI = {
   deleteComment: (commentId) => api.delete(`/comments/${commentId}`)
 };
 
+export const photoAPI = {
+  upload: (formData, onUploadProgress) => {
+    return api.post('/photos/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress
+    });
+  },
+  getAll: (status) => {
+    const params = status ? { status } : {};
+    return api.get('/photos', { params });
+  },
+  getPublic: () => api.get('/photos/public'),
+  getLiked: () => api.get('/photos/liked'),
+  getDisliked: () => api.get('/photos/disliked'),
+  getSaved: () => api.get('/photos/saved'),
+  getById: (id) => api.get(`/photos/${id}`),
+  delete: (id) => api.delete(`/photos/${id}`),
+  toggleLike: (id) => api.post(`/photos/${id}/like`),
+  toggleDislike: (id) => api.post(`/photos/${id}/dislike`),
+  toggleSave: (id) => api.post(`/photos/${id}/save`),
+  addView: (id) => api.post(`/photos/${id}/view`)
+};
+
 export default api;

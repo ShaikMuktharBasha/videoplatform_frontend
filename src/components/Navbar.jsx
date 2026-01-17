@@ -18,12 +18,12 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           <Link to={isEditor ? "/dashboard" : "/"} className="flex items-center space-x-2">
             <img src={logo} alt="Logo" className="w-10 h-10 object-contain" />
-            <span className="text-xl font-bold text-gray-900 dark:text-white hidden sm:block">Video Platform</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-white hidden sm:block">Content Analyzer</span>
           </Link>
 
           {/* Mobile Menu Links - Visible only on small screens */}
           <div className="flex space-x-4 md:hidden">
-             <Link to={isEditor ? "/dashboard" : "/"} className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md font-medium">{isEditor ? 'My Videos' : 'Feed'}</Link>
+             <Link to={isEditor ? "/dashboard" : "/"} className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md font-medium">{isEditor ? 'My Content' : 'Feed'}</Link>
           </div>
 
           <div className="flex items-center space-x-4">

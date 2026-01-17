@@ -60,7 +60,7 @@ const Register = () => {
         <div className="text-center mb-8">
           <img src={logo} alt="Logo" className="w-24 h-24 mx-auto mb-4 object-contain" />
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Create Account</h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Join our video platform</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Join our content platform</p>
         </div>
 
         {error && (

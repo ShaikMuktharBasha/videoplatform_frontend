@@ -85,6 +85,15 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            
+            <Route
+              path="/photo/:id"
+              element={
+                <ProtectedRoute>
+                  <VideoPlayer />
+                </ProtectedRoute>
+              }
+            />
           </Route>
         </Routes>
       </Router>

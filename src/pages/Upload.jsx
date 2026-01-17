@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { videoAPI } from '../services/api';
+import { videoAPI, photoAPI } from '../services/api';
 
 const Upload = () => {
+  const [contentType, setContentType] = useState('video'); // 'video' or 'photo'
   const [formData, setFormData] = useState({
     title: '',
     description: ''
@@ -15,7 +16,7 @@ const Upload = () => {
   const [uploading, setUploading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
-  const [uploadedVideoId, setUploadedVideoId] = useState(null);
+  const [uploadedId, setUploadedId] = useState(null);
   
   const navigate = useNavigate();
 
@@ -23,20 +24,21 @@ const Upload = () => {
   useEffect(() => {
     let pollInterval;
 
-    if (processing && uploadedVideoId) {
+    if (processing && uploadedId) {
       pollInterval = setInterval(async () => {
         try {
-          const response = await videoAPI.getById(uploadedVideoId);
-          const video = response.data.video;
+          const api = contentType === 'video' ? videoAPI : photoAPI;
+          const response = await api.getById(uploadedId);
+          const data = contentType === 'video' ? response.data.video : response.data.photo;
           
-          setProcessingProgress(video.processingProgress || 0);
+          setProcessingProgress(data.processingProgress || 0);
 
-          if (video.processingStatus === 'completed') {
+          if (data.processingStatus === 'completed') {
             setProcessingProgress(100);
             setTimeout(() => {
               navigate('/dashboard');
             }, 1000);
-          } else if (video.processingStatus === 'failed') {
+          } else if (data.processingStatus === 'failed') {
             setError('Processing failed');
             setProcessing(false);
           }
@@ -49,25 +51,24 @@ const Upload = () => {
     return () => {
         if (pollInterval) clearInterval(pollInterval);
     };
-  }, [processing, uploadedVideoId, navigate]);
+  }, [processing, uploadedId, navigate, contentType]);
 
-  // Smooth progress animation effect
+  // Smooth progress animation
   useEffect(() => {
-    if (processing && visualProgress < processingProgress) {
-      const timer = setTimeout(() => {
-        setVisualProgress(prev => {
-          const next = prev + 1;
-          return next > processingProgress ? processingProgress : next;
-        });
-      }, 50); // Updates every 50ms for smooth counting
-      return () => clearTimeout(timer);
-    } else if (!processing && processingProgress === 0) {
-      setVisualProgress(0);
-    } else if (visualProgress > processingProgress && processing) {
-       // Reset if we start over
-       setVisualProgress(processingProgress);
-    }
-  }, [visualProgress, processingProgress, processing]);
+     if (processingProgress > visualProgress) {
+        const interval = setInterval(() => {
+           setVisualProgress(prev => {
+              if (prev >= processingProgress) {
+                 clearInterval(interval);
+                 return prev;
+              }
+              return prev + 1;
+           });
+        }, 50);
+        return () => clearInterval(interval);
+     }
+  }, [processingProgress, visualProgress]);
+
 
   const handleChange = (e) => {
     setFormData({
@@ -79,195 +80,261 @@ const Upload = () => {
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
-      // Validate file type
-      const validTypes = ['video/mp4', 'video/avi', 'video/mov', 'video/wmv', 'video/flv', 'video/mkv', 'video/webm'];
-      if (!validTypes.includes(selectedFile.type)) {
-        setError('Please select a valid video file (mp4, avi, mov, wmv, flv, mkv, webm)');
-        return;
-      }
-      
-      // Validate file size (4.5MB max for Vercel Serverless)
-      const maxSize = 4.5 * 1024 * 1024; // 4.5MB
-      if (selectedFile.size > maxSize) {
-        setError('File size must be less than 4.5MB (Vercel Limit).');
-        return;
-      }
-      
-      setFile(selectedFile);
-      setError('');
+        // Size validation
+        // 100MB for video, 10MB for photo
+        const sizeLimit = contentType === 'video' ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
+        
+        if (selectedFile.size > sizeLimit) {
+            setError(`File too large. Max ${contentType === 'video' ? '100MB' : '10MB'}.`);
+            return;
+        }
 
-      // Extract duration
-      const video = document.createElement('video');
-      video.preload = 'metadata';
-      video.onloadedmetadata = function() {
-        window.URL.revokeObjectURL(video.src);
-        setFileDuration(video.duration);
-      }
-      video.src = URL.createObjectURL(selectedFile);
+        const validVideoTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-flv', 'video/x-matroska', 'video/webm'];
+        const validPhotoTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        
+        const validTypes = contentType === 'video' ? validVideoTypes : validPhotoTypes;
+
+        if (!validTypes.includes(selectedFile.type)) {
+            setError(`Invalid file type. Please upload a ${contentType}.`);
+            return;
+        }
+
+        setFile(selectedFile);
+        setError('');
+
+        if (contentType === 'video') {
+            // Extract duration for videos
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.onloadedmetadata = function() {
+                window.URL.revokeObjectURL(video.src);
+                setFileDuration(video.duration);
+            }
+            video.src = URL.createObjectURL(selectedFile);
+        } else {
+            setFileDuration(null);
+        }
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!file) {
-      setError('Please select a video file');
+      setError('Please select a file');
       return;
     }
     
-    if (!formData.title) {
-      setError('Please enter a title');
-      return;
-    }
-
     setError('');
     setUploading(true);
     setUploadProgress(0);
 
-    const uploadFormData = new FormData();
-    uploadFormData.append('video', file);
-    uploadFormData.append('title', formData.title);
-    uploadFormData.append('description', formData.description);
+    const data = new FormData();
+    data.append(contentType === 'video' ? 'video' : 'photo', file);
+    data.append('title', formData.title);
+    data.append('description', formData.description);
     if (fileDuration) {
-      uploadFormData.append('duration', Math.round(fileDuration));
+        data.append('duration', Math.round(fileDuration));
     }
 
     try {
-      const response = await videoAPI.upload(uploadFormData, (progressEvent) => {
-        const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        setUploadProgress(progress);
+      const api = contentType === 'video' ? videoAPI : photoAPI;
+      const response = await api.upload(data, (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        setUploadProgress(percentCompleted);
       });
 
+      setUploadedId(contentType === 'video' ? response.data.video.id : response.data.photo.id);
       setUploading(false);
       setProcessing(true);
-      setProcessingProgress(0);
-      setVisualProgress(0);
-      setUploadedVideoId(response.data.video.id);
       
-    } catch (error) {
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || 'Upload failed');
       setUploading(false);
-      setError(error.response?.data?.message || 'Upload failed. Please try again.');
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Upload Video</h1>
-        <p className="text-gray-600 mt-1">Share your content with the platform</p>
-      </div>
-
-      <div className="card">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-              {error}
-            </div>
-          )}
-
-          {!uploading && !processing ? (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Video File * <span className="text-xs text-gray-500 font-normal">(Max 4.5MB)</span>
-                </label>
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={handleFileChange}
-                  className="w-full px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-primary-500 dark:hover:border-primary-500 transition-colors cursor-pointer dark:bg-gray-800 dark:text-gray-300"
-                  required
-                />
-                {file && (
-                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                    Selected: {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Title *
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  className="input-field"
-                  placeholder="Enter video title"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  className="input-field"
-                  rows="4"
-                  placeholder="Enter video description (optional)"
-                />
-              </div>
-
-              <div className="flex space-x-4">
-                <button type="submit" className="flex-1 btn-primary">
-                  Upload Video
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate('/dashboard')}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="space-y-6">
-              {uploading && (
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Uploading...</span>
-                    <span className="text-sm font-medium text-primary-600 dark:text-primary-400">{uploadProgress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                    <div
-                      className="bg-primary-600 dark:bg-primary-500 h-3 rounded-full transition-all duration-300"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {processing && (
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Processing & Analyzing Content...
-                    </span>
-                    <span className="text-sm font-medium text-primary-600 dark:text-primary-400">{visualProgress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                    <div
-                      className="bg-green-600 dark:bg-green-500 h-3 rounded-full transition-all duration-100 ease-linear"
-                      style={{ width: `${visualProgress}%` }}
-                    />
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-4 text-center">
-                    {visualProgress === 100 
-                      ? '✓ Processing complete! Redirecting to dashboard...'
-                      : 'Please wait while we analyze your video for sensitive content...'}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+    <div className="max-w-2xl mx-auto p-4 md:p-8">
+      <h1 className="text-3xl font-bold mb-8 text-gray-900 dark:text-white">Upload Content</h1>
+      
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+        
+        {/* Content Type Toggle */}
+        <div className="flex space-x-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
+            <button
+                type="button"
+                onClick={() => { setContentType('video'); setFile(null); setError(''); }}
+                className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                    contentType === 'video' 
+                    ? 'bg-primary-600 text-white' 
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+            >
+                Upload Video
+            </button>
+            <button
+                type="button"
+                onClick={() => { setContentType('photo'); setFile(null); setError(''); }}
+                className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                    contentType === 'photo' 
+                    ? 'bg-primary-600 text-white' 
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+            >
+                Upload Photo
+            </button>
         </div>
+
+        {error && (
+          <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+
+        {!processing ? (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            
+            {/* File Input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {contentType === 'video' ? 'Video File * (Max 100MB)' : 'Photo File * (Max 10MB)'}
+              </label>
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md hover:border-primary-500 transition-colors">
+                <div className="space-y-1 text-center">
+                  {!file ? (
+                    <>
+                      <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <div className="flex text-sm text-gray-600 dark:text-gray-400">
+                        <label className="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500">
+                          <span>Upload a file</span>
+                          <input  
+                            name="file" 
+                            type="file" 
+                            accept={contentType === 'video' ? "video/*" : "image/*"}
+                            className="sr-only" 
+                            onChange={handleFileChange}
+                          />
+                        </label>
+                        <p className="pl-1">or drag and drop</p>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-500">
+                        {contentType === 'video' ? 'MP4, MOV, AVI up to 100MB' : 'PNG, JPG, GIF up to 10MB'}
+                      </p>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-2 rounded">
+                        <span className="text-sm text-gray-700 dark:text-gray-200 truncate max-w-xs">{file.name}</span>
+                        <button 
+                            type="button" 
+                            onClick={() => { setFile(null); setFileDuration(null); }}
+                            className="ml-2 text-red-500 hover:text-red-700"
+                        >
+                            Remove
+                        </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Title */}
+            <div>
+              <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Title *
+              </label>
+              <input
+                type="text"
+                name="title"
+                id="title"
+                required
+                value={formData.title}
+                onChange={handleChange}
+                placeholder={`Enter ${contentType} title`}
+                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm py-2 px-3"
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Description
+              </label>
+              <textarea
+                name="description"
+                id="description"
+                rows="3"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder={`Enter ${contentType} description (optional)`}
+                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm py-2 px-3"
+              ></textarea>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={uploading || !file}
+              className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${
+                (uploading || !file) ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              {uploading ? `Uploading ${uploadProgress}%...` : 'Upload'}
+            </button>
+          </form>
+        ) : (
+          <div className="text-center py-12">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Processing {contentType === 'video' ? 'Video' : 'Photo'}...</h3>
+            
+            {/* Processing Steps */}
+            <div className="max-w-md mx-auto space-y-6">
+                
+                {/* Progress Bar */}
+                <div className="relative pt-1">
+                    <div className="flex mb-2 items-center justify-between">
+                        <div>
+                        <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-primary-600 bg-primary-200 dark:bg-primary-900 dark:text-primary-300">
+                            Analysis in progress
+                        </span>
+                        </div>
+                        <div className="text-right">
+                        <span className="text-xs font-semibold inline-block text-primary-600 dark:text-primary-400">
+                            {visualProgress}%
+                        </span>
+                        </div>
+                    </div>
+                    <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-primary-200 dark:bg-gray-700">
+                        <div style={{ width: `${visualProgress}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary-500 transition-all duration-300 ease-out"></div>
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    <div className={`flex items-center space-x-3 text-sm ${visualProgress > 10 ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
+                        <span className="w-5 h-5 flex items-center justify-center border rounded-full text-xs">1</span>
+                        <span>Uploading file...</span>
+                    </div>
+                    <div className={`flex items-center space-x-3 text-sm ${visualProgress > 40 ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
+                        <span className="w-5 h-5 flex items-center justify-center border rounded-full text-xs">2</span>
+                        <span>Analyzing content...</span>
+                    </div>
+                    <div className={`flex items-center space-x-3 text-sm ${visualProgress > 70 ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
+                        <span className="w-5 h-5 flex items-center justify-center border rounded-full text-xs">3</span>
+                        <span>Checking sensitivity...</span>
+                    </div>
+                    <div className={`flex items-center space-x-3 text-sm ${visualProgress >= 100 ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
+                        <span className="w-5 h-5 flex items-center justify-center border rounded-full text-xs">4</span>
+                        <span>Finalizing...</span>
+                    </div>
+                </div>
+
+            </div>
+          </div>
+        )}
       </div>
+    </div>
   );
 };
+
 export default Upload;

@@ -1,31 +1,34 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { videoAPI } from '../services/api';
-import { HandThumbUpIcon, HandThumbDownIcon, BookmarkIcon } from '@heroicons/react/24/outline';
+import { videoAPI, photoAPI } from '../services/api';
+import { HandThumbUpIcon, HandThumbDownIcon, BookmarkIcon, PhotoIcon, VideoCameraIcon } from '@heroicons/react/24/outline';
 import { HandThumbUpIcon as HandThumbUpSolid, HandThumbDownIcon as HandThumbDownSolid, BookmarkIcon as BookmarkSolid, PlayCircleIcon } from '@heroicons/react/24/solid';
 
 const Dashboard = () => {
-  const [videos, setVideos] = useState([]);
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [contentType, setContentType] = useState('video'); // 'video' or 'photo'
   const { isEditor, user } = useAuth();
   const navigate = useNavigate();
   const videoRefs = useRef({});
   const [hoveredVideoId, setHoveredVideoId] = useState(null);
 
-  // Get base URL for video preview
+  // Get base URL for content preview
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
   const BASE_URL = API_URL.replace('/api', '');
 
   useEffect(() => {
-    fetchVideos();
-  }, [filter, user]); // Re-fetch/update if user changes
+    fetchContent();
+  }, [filter, user, contentType]); 
 
   const handleMouseEnter = (id) => {
+    if (contentType !== 'video') return;
+
     setHoveredVideoId(id);
     
-    // Stop all other videos to prevent multiple playback
+    // Stop all other videos
     Object.keys(videoRefs.current).forEach(key => {
       const vid = videoRefs.current[key];
       if (String(key) !== String(id) && vid) {
@@ -40,7 +43,6 @@ const Dashboard = () => {
       const playPromise = videoRefs.current[id].play();
       if (playPromise !== undefined) {
         playPromise.catch(error => {
-          // Autoplay might be blocked by browser policy or interrupted
            // console.log("Preview play failed:", error);
         });
       }
@@ -48,9 +50,10 @@ const Dashboard = () => {
   };
 
   const handleMouseLeave = (id) => {
+    if (contentType !== 'video') return;
+
     const vid = videoRefs.current[id];
     
-    // Check for fullscreen - if this video is fullscreen, don't stop it
     if (vid && document.fullscreenElement && document.fullscreenElement === vid) {
       return; 
     }
@@ -59,352 +62,235 @@ const Dashboard = () => {
     if (vid) {
         vid.pause();
         try {
-          // Reset to initial title card frame (1.0s)
           vid.currentTime = 1.0;
         } catch(e) { /* ignore */ }
     }
   };
 
 
-  const fetchVideos = async () => {
+  const fetchContent = async () => {
     try {
       setLoading(true);
+      setItems([]); // Clear current items while loading
+      
       const statusParam = filter === 'all' ? null : filter;
-      const response = await videoAPI.getAll(statusParam);
       
-      let fetchedVideos = response.data.videos;
+      let fetchedItems = [];
       
-      // Augment with isSaved status from user profile
-      if (user && user.savedVideos) {
-        fetchedVideos = fetchedVideos.map(v => ({
-          ...v,
-          isSaved: user.savedVideos.includes(v._id)
-        }));
+      if (contentType === 'video') {
+          const response = await videoAPI.getAll(statusParam);
+          fetchedItems = response.data.videos;
+          
+          if (user && user.savedVideos) {
+            fetchedItems = fetchedItems.map(v => ({
+              ...v,
+              isSaved: user.savedVideos.includes(v._id)
+            }));
+          }
+      } else {
+          const response = await photoAPI.getAll(statusParam);
+          fetchedItems = response.data.photos;
+          
+          if (user && user.savedPhotos) {
+            fetchedItems = fetchedItems.map(p => ({
+              ...p,
+              isSaved: user.savedPhotos.includes(p._id)
+            }));
+          }
       }
 
-      setVideos(fetchedVideos);
+      setItems(fetchedItems);
     } catch (error) {
-      console.error('Error fetching videos:', error);
+      console.error(`Error fetching ${contentType}s:`, error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLike = async (e, videoId) => {
-    e.stopPropagation();
-    try {
-      const response = await videoAPI.toggleLike(videoId);
-      setVideos(videos.map(v => {
-        if (v._id === videoId) {
-             const isLiked = response.data.isLiked;
-             let newLikes = v.likes ? [...v.likes] : [];
-             let newDislikes = v.dislikes ? [...v.dislikes] : [];
-             
-             if (isLiked) {
-                 if (user && !newLikes.includes(user._id)) newLikes.push(user._id);
-                 if (user && newDislikes.includes(user._id)) newDislikes = newDislikes.filter(id => id !== user._id);
-             } else {
-                 if (user) newLikes = newLikes.filter(id => id !== user._id);
-             }
-             
-             return { ...v, likes: newLikes, dislikes: newDislikes };
-        }
-        return v;
-      }));
-    } catch (error) {
-        console.error('Like error', error);
-    }
-  };
-
-  const handleDislike = async (e, videoId) => {
-    e.stopPropagation();
-    try {
-      const response = await videoAPI.toggleDislike(videoId);
-      setVideos(videos.map(v => {
-        if (v._id === videoId) {
-             const isDisliked = response.data.isDisliked;
-             let newLikes = v.likes ? [...v.likes] : [];
-             let newDislikes = v.dislikes ? [...v.dislikes] : [];
-             
-             if (isDisliked) {
-                 if (user && !newDislikes.includes(user._id)) newDislikes.push(user._id);
-                 if (user && newLikes.includes(user._id)) newLikes = newLikes.filter(id => id !== user._id);
-             } else {
-                 if (user) newDislikes = newDislikes.filter(id => id !== user._id);
-             }
-             
-             return { ...v, likes: newLikes, dislikes: newDislikes };
-        }
-        return v;
-      }));
-    } catch (error) {
-        console.error('Dislike error', error);
-    }
-  };
-
-  const handleSave = async (e, videoId) => {
-      e.stopPropagation();
+  const handleDelete = async (e, id) => {
+    e.preventDefault();
+    if (window.confirm('Are you sure you want to delete this item?')) {
       try {
-          const response = await videoAPI.toggleSave(videoId);
-          setVideos(videos.map(v => {
-              if (v._id === videoId) {
-                  return { ...v, isSaved: response.data.isSaved };
-              }
-              return v;
-          }));
+        if (contentType === 'video') {
+            await videoAPI.delete(id);
+        } else {
+            await photoAPI.delete(id);
+        }
+        setItems(items.filter(item => item._id !== id));
       } catch (error) {
-          console.error('Save error', error);
+        console.error('Error deleting item:', error);
       }
-  };
-
-  const handleDelete = async (videoId) => {
-    // Only allow delete if confirmation passed
-    // Note: wrapping in another function if needed for e.stopPropagation but button usually on top
-  };
-
-  const handleDeleteClick = async (e, videoId) => {
-    e.stopPropagation();
-    if (!window.confirm('Are you sure you want to delete this video?')) {
-      return;
     }
-
-    try {
-      await videoAPI.delete(videoId);
-      setVideos(videos.filter(v => v._id !== videoId));
-    } catch (error) {
-      console.error('Error deleting video:', error);
-      alert('Failed to delete video');
-    }
-  };
-
-  const getSensitivityBadge = (status) => {
-    switch (status) {
-      case 'safe':
-        return <span className="badge-safe">✓ Safe</span>;
-      case 'flagged':
-        return <span className="badge-flagged">⚠ Flagged</span>;
-      case 'pending':
-        return <span className="badge-pending">⏳ Processing</span>;
-      default:
-        return <span className="badge-pending">Unknown</span>;
-    }
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-  };
-
-  const formatDuration = (seconds) => {
-    if (!seconds) return 'N/A';
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-         <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Videos</h1>
-          <p className="text-gray-600 mt-1">Manage your uploaded videos</p>
-        </div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Content</h1>
         
-        {isEditor && (
-          <Link to="/upload" className="btn-primary">
-            + Upload Video
-          </Link>
-        )}
-      </div>
+        {/* Content Type Toggle */}
+        <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+            <button
+                onClick={() => setContentType('video')}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    contentType === 'video'
+                        ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                }`}
+            >
+                <VideoCameraIcon className="w-5 h-5" />
+                <span>Videos</span>
+            </button>
+            <button
+                onClick={() => setContentType('photo')}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    contentType === 'photo'
+                        ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                }`}
+            >
+                <PhotoIcon className="w-5 h-5" />
+                <span>Photos</span>
+            </button>
+        </div>
 
-      {/* Filter */}
-        <div className="mb-6 flex space-x-2">
+        <div className="flex space-x-2 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <button
             onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              filter === 'all'
-                ? 'bg-primary-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              filter === 'all' 
+              ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' 
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}
           >
-            All Videos
+            All
           </button>
           <button
-            onClick={() => setFilter('safe')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              filter === 'safe'
-                ? 'bg-green-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-            }`}
-          >
-            Safe
-          </button>
-          <button
-            onClick={() => setFilter('flagged')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              filter === 'flagged'
-                ? 'bg-red-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-            }`}
-          >
-            Flagged
-          </button>
-          <button
-            onClick={() => setFilter('pending')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              filter === 'pending'
-                ? 'bg-yellow-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+            onClick={() => setFilter('private')}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              filter === 'private' 
+              ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' 
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}
           >
             Processing
           </button>
+          <button
+            onClick={() => setFilter('public')}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              filter === 'public' 
+              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+          >
+            Published
+          </button>
         </div>
+      </div>
 
-        {/* Videos Grid */}
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-          </div>
-        ) : videos.length === 0 ? (
-          <div className="card text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400 text-lg">No videos found</p>
-            {isEditor && (
-              <Link to="/upload" className="btn-primary mt-4 inline-block">
-                Upload your first video
-              </Link>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {videos.map((video) => (
-              <div 
-                key={video._id} 
-                className="card hover:shadow-lg transition-shadow group cursor-pointer border border-gray-200 dark:border-gray-700 flex flex-col" 
-                onClick={() => navigate(`/video/${video._id}`)}
-              >
-                {/* Video Preview */}
-                <div 
-                  className="relative aspect-video mb-4 bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center bg-zinc-800"
-                  onMouseEnter={() => handleMouseEnter(video._id)}
-                  onMouseLeave={() => handleMouseLeave(video._id)}
-                >
-                  {video.processingStatus === 'completed' ? (
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+      ) : items.length === 0 ? (
+        <div className="text-center py-12 bg-white dark:bg-gray-900 rounded-lg shadow dark:shadow-gray-900/10 dark:border dark:border-gray-800">
+          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          <p className="mt-2 text-gray-500 dark:text-gray-400 text-lg">No {contentType}s found.</p>
+          <Link to="/upload" className="mt-4 inline-flex items-center text-primary-600 hover:text-primary-700 dark:text-primary-400">
+            Upload your first {contentType} →
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {items.map((item) => (
+            <div 
+              key={item._id} 
+              className="bg-white dark:bg-gray-900 rounded-lg shadow dark:shadow-gray-900/10 dark:border dark:border-gray-800 hover:shadow-lg transition-shadow duration-200 overflow-hidden flex flex-col group"
+              onMouseEnter={() => handleMouseEnter(item._id)}
+              onMouseLeave={() => handleMouseLeave(item._id)}
+            >
+              {/* Preview */}
+              <div className="relative aspect-video bg-gray-100 dark:bg-gray-700 overflow-hidden flex items-center justify-center">
+                {item.processingStatus === 'completed' ? (
+                  contentType === 'video' ? (
                     <>
-                      <video 
-                        ref={el => videoRefs.current[video._id] = el}
-                        src={video.filepath && video.filepath.startsWith('http') ? video.filepath : `${BASE_URL}/uploads/${video.filename}`}
-                        className="w-full h-full object-cover transition-opacity duration-300"
-                        preload="metadata"
-                        muted
-                        loop
-                        playsInline
-                        onLoadedData={(e) => {
-                           // Seek a bit into the video to avoid black frames (e.g. 1 second)
-                           if (e.target.currentTime === 0) {
-                             e.target.currentTime = 1.0;
-                           }
-                        }}
-                        controls={hoveredVideoId === video._id}
-                        controlsList="nodownload" 
-                        onClick={(e) => {
-                          // Allow clicking controls without triggering card nav
-                          e.stopPropagation();
-                        }}
-                      />
-                       {/* Play Button Overlay - Fades out on hover */}
-                       <div className={`absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-300 pointer-events-none ${hoveredVideoId === video._id ? 'opacity-0' : 'opacity-100'}`}>
-                          <PlayCircleIcon className="w-16 h-16 text-white/90 drop-shadow-xl" />
-                       </div>
+                        <video 
+                            ref={el => videoRefs.current[item._id] = el}
+                            src={item.filepath && item.filepath.startsWith('http') ? item.filepath : `${BASE_URL}/uploads/${item.filename}`}
+                            className="w-full h-full object-cover"
+                            muted
+                            loop
+                            playsInline
+                            poster={`${BASE_URL}/uploads/${item.thumbnail}`}
+                        />
+                        {/* Play Icon Overlay (visible when not hovering) */}
+                        <div className={`absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-200 ${hoveredVideoId === item._id ? 'opacity-0' : 'opacity-100'}`}>
+                            <PlayCircleIcon className="w-12 h-12 text-white opacity-80" />
+                        </div>
                     </>
                   ) : (
-                    <div className="text-gray-500 flex flex-col items-center">
-                      <span className="text-2xl mb-2">⏳</span>
-                      <span className="text-xs">Processing...</span>
+                    <img 
+                        src={item.filepath && item.filepath.startsWith('http') ? item.filepath : `${BASE_URL}/uploads/${item.filename}`}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                    />
+                  )
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-800">
+                    <div className="w-full max-w-[80%] px-4">
+                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>Processing</span>
+                            <span>{item.processingProgress || 0}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+                            <div className="bg-primary-600 h-2 rounded-full transition-all duration-500" style={{ width: `${item.processingProgress || 0}%` }}></div>
+                        </div>
                     </div>
-                  )}
+                  </div>
+                )}
+                
+                {/* Status Badge */}
+                <span className={`absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded ${
+                  item.status === 'public' 
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
+                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                }`}>
+                  {item.status === 'public' ? 'Public' : 'Private'}
+                </span>
+              </div>
+              
+              <div className="p-4 flex-1 flex flex-col">
+                <div className="flex justify-between items-start mb-2">
+                    <Link to={`/${contentType === 'video' ? 'video' : 'photo'}/${item._id}`} className="block flex-1 min-w-0 mr-2">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate hover:text-primary-600 transition-colors" title={item.title}>
+                        {item.title}
+                        </h3>
+                    </Link>
+                    <div className="flex space-x-2">
+                        {/* Edit/Delete Actions */}
+                        <button 
+                            onClick={(e) => handleDelete(e, item._id)}
+                            className="text-gray-400 hover:text-red-500 transition-colors"
+                            title="Delete"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
-                <div className="mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 truncate">
-                    {video.title}
-                  </h3>
-                  {video.description && (
-                    <p className="text-gray-600 dark:text-gray-400 text-sm line-clamp-2">
-                      {video.description}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2 mb-4 flex-grow">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">Status:</span>
-                    {getSensitivityBadge(video.sensitivityStatus)}
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">Duration:</span>
-                    <span className="text-gray-900 dark:text-gray-200">{formatDuration(video.duration)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">Uploaded:</span>
-                    <span className="text-gray-900 dark:text-gray-200">
-                      {new Date(video.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Actions Footer */}
-                <div className="mt-auto flex items-center justify-between border-t pt-3 border-gray-100 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
-                   <div className="flex space-x-1">
-                      <button
-                          onClick={(e) => handleLike(e, video._id)}
-                          className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                              user && video.likes?.includes(user._id) ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400'
-                          }`}
-                          title="Like"
-                      >
-                          {user && video.likes?.includes(user._id) ? <HandThumbUpSolid className="w-5 h-5" /> : <HandThumbUpIcon className="w-5 h-5" />}
-                      </button>
-                      <button
-                          onClick={(e) => handleDislike(e, video._id)}
-                          className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                              user && video.dislikes?.includes(user._id) ? 'text-red-600' : 'text-gray-500 dark:text-gray-400'
-                          }`}
-                          title="Dislike"
-                      >
-                          {user && video.dislikes?.includes(user._id) ? <HandThumbDownSolid className="w-5 h-5" /> : <HandThumbDownIcon className="w-5 h-5" />}
-                      </button>
-                   </div>
-
-                   <div className="flex items-center space-x-2">
-                      <button
-                          onClick={(e) => handleSave(e, video._id)}
-                          className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                              video.isSaved ? 'text-yellow-500' : 'text-gray-500 dark:text-gray-400'
-                          }`}
-                          title="Save"
-                      >
-                          {video.isSaved ? <BookmarkSolid className="w-5 h-5" /> : <BookmarkIcon className="w-5 h-5" />}
-                      </button>
-                      
-                       {isEditor && (
-                          <button
-                            onClick={(e) => handleDeleteClick(e, video._id)}
-                            className="ml-2 text-xs text-red-600 hover:text-red-800 font-medium px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 rounded-md transition-colors"
-                          >
-                            Delete
-                          </button>
-                        )}
-                   </div>
+                <div className="mt-auto pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
+                   <span>{item.views || 0} views</span>
+                   <span>{(item.likes || []).length} likes</span>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
