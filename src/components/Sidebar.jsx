@@ -15,8 +15,8 @@ const Sidebar = () => {
 
   const isActive = (path) => {
     return location.pathname === path 
-      ? 'bg-primary-50 dark:bg-gray-800 text-primary-700 dark:text-primary-400 border-r-4 border-primary-600' 
-      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800';
+      ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-r-4 border-purple-500' 
+      : 'text-gray-600 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-white/5';
   };
 
   const navItems = [
@@ -28,14 +28,14 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 min-h-screen fixed left-0 top-16 hidden md:block overflow-y-auto transition-colors duration-200">
+    <aside className="w-64 glass border-t-0 min-h-screen fixed left-0 top-16 hidden md:block overflow-y-auto transition-all duration-200 z-10">
       <div className="py-4">
         <ul className="space-y-1">
           {navItems.map((item) => (
             <li key={item.path}>
               <Link
                 to={item.path}
-                className={`flex items-center px-6 py-3 text-sm font-medium transition-colors ${isActive(item.path)}`}
+                className={`flex items-center px-6 py-3 text-sm font-medium transition-all ${isActive(item.path)}`}
               >
                 <item.icon className="w-6 h-6 mr-3" />
                 {item.name}

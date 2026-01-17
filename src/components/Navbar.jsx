@@ -13,12 +13,14 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-white dark:bg-gray-800 shadow-md fixed w-full z-20 top-0 left-0 border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
+    <nav className="glass fixed w-full z-20 top-0 left-0 transition-all duration-200">
       <div className="max-w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link to={isEditor ? "/dashboard" : "/"} className="flex items-center space-x-2">
             <img src={logo} alt="Logo" className="w-10 h-10 object-contain" />
-            <span className="text-xl font-bold text-gray-900 dark:text-white hidden sm:block">Content Analyzer</span>
+            <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent hidden sm:block">
+              Content Analyzer
+            </span>
           </Link>
 
           {/* Mobile Menu Links - Visible only on small screens */}
@@ -35,7 +37,7 @@ const Navbar = () => {
             </div>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 dark:text-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              className="px-4 py-2 border border-slate-200 dark:border-slate-700 text-sm font-medium rounded-xl text-gray-700 bg-gray-50 hover:bg-gray-100 dark:text-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
             >
               Logout
             </button>
