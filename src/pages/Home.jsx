@@ -66,7 +66,7 @@ const Home = () => {
               <div className="relative aspect-video bg-gray-100 dark:bg-gray-700 overflow-hidden flex items-center justify-center">
                 {video.processingStatus === 'completed' ? (
                   <video 
-                    src={`${BASE_URL}/uploads/${video.filename}`}
+                    src={video.filepath && video.filepath.startsWith('http') ? video.filepath : `${BASE_URL}/uploads/${video.filename}`}
                     className="w-full h-full object-cover"
                     controls
                   />
