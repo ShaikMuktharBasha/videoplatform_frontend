@@ -166,9 +166,9 @@ const Dashboard = () => {
             All
           </button>
           <button
-            onClick={() => setFilter('private')}
+            onClick={() => setFilter('pending')}
             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              filter === 'private' 
+              filter === 'pending' 
               ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' 
               : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}
@@ -176,9 +176,9 @@ const Dashboard = () => {
             Processing
           </button>
           <button
-            onClick={() => setFilter('public')}
+            onClick={() => setFilter('safe')}
             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              filter === 'public' 
+              filter === 'safe' 
               ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
               : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}
@@ -253,11 +253,13 @@ const Dashboard = () => {
                 
                 {/* Status Badge */}
                 <span className={`absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded ${
-                  item.status === 'public' 
+                  item.sensitivityStatus === 'safe'
                     ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
-                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                    : item.sensitivityStatus === 'flagged'
+                      ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
                 }`}>
-                  {item.status === 'public' ? 'Public' : 'Private'}
+                  {item.sensitivityStatus === 'safe' ? 'Public' : (item.sensitivityStatus === 'flagged' ? 'Flagged' : 'Processing')}
                 </span>
               </div>
               
