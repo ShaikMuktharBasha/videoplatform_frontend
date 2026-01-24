@@ -40,8 +40,51 @@ export const authAPI = {
   login: (data) => api.post('/auth/login', data)
 };
 
+// Helper: Upload directly to Cloudinary (bypasses Vercel's 4.5MB limit)
+const uploadToCloudinary = async (file, signatureData, onProgress) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('api_key', signatureData.apiKey);
+  formData.append('timestamp', signatureData.timestamp);
+  formData.append('signature', signatureData.signature);
+  formData.append('folder', signatureData.folder);
+  
+  const uploadUrl = `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/${signatureData.resourceType}/upload`;
+  
+  const response = await axios.post(uploadUrl, formData, {
+    onUploadProgress: onProgress
+  });
+  
+  return response.data;
+};
+
 // Video endpoints
 export const videoAPI = {
+  // Get signature for direct Cloudinary upload
+  getUploadSignature: () => api.get('/videos/upload-signature'),
+  
+  // Direct Cloudinary upload (recommended for large files)
+  uploadDirect: async (file, title, description, duration, onProgress) => {
+    // Step 1: Get signature from backend
+    const sigResponse = await api.get('/videos/upload-signature');
+    const signatureData = sigResponse.data;
+    
+    // Step 2: Upload directly to Cloudinary
+    const cloudinaryResult = await uploadToCloudinary(file, signatureData, onProgress);
+    
+    // Step 3: Save video record to backend
+    return api.post('/videos/save-cloudinary', {
+      title,
+      description,
+      cloudinaryUrl: cloudinaryResult.secure_url,
+      publicId: cloudinaryResult.public_id,
+      filesize: cloudinaryResult.bytes,
+      duration: duration || cloudinaryResult.duration,
+      format: cloudinaryResult.format
+    });
+  },
+  
+  // Legacy upload via server (limited to ~4.5MB on Vercel)
   upload: (formData, onUploadProgress) => {
     return api.post('/videos/upload', formData, {
       headers: {
@@ -75,6 +118,30 @@ export const videoAPI = {
 };
 
 export const photoAPI = {
+  // Get signature for direct Cloudinary upload
+  getUploadSignature: () => api.get('/photos/upload-signature'),
+  
+  // Direct Cloudinary upload (recommended for large files)
+  uploadDirect: async (file, title, description, onProgress) => {
+    // Step 1: Get signature from backend
+    const sigResponse = await api.get('/photos/upload-signature');
+    const signatureData = sigResponse.data;
+    
+    // Step 2: Upload directly to Cloudinary
+    const cloudinaryResult = await uploadToCloudinary(file, signatureData, onProgress);
+    
+    // Step 3: Save photo record to backend
+    return api.post('/photos/save-cloudinary', {
+      title,
+      description,
+      cloudinaryUrl: cloudinaryResult.secure_url,
+      publicId: cloudinaryResult.public_id,
+      filesize: cloudinaryResult.bytes,
+      format: cloudinaryResult.format
+    });
+  },
+  
+  // Legacy upload via server (limited to ~4.5MB on Vercel)
   upload: (formData, onUploadProgress) => {
     return api.post('/photos/upload', formData, {
       headers: {

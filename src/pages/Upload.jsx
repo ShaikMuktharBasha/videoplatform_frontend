@@ -15,6 +15,7 @@ const Upload = () => {
   const [visualProgress, setVisualProgress] = useState(0); // For smooth animation
   const [uploading, setUploading] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [uploadStage, setUploadStage] = useState(''); // 'cloudinary', 'saving', 'processing'
   const [error, setError] = useState('');
   const [uploadedId, setUploadedId] = useState(null);
   
@@ -80,12 +81,12 @@ const Upload = () => {
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
-        // Size validation
-        // 100MB for video, 10MB for photo
-        const sizeLimit = contentType === 'video' ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
+        // Size validation - increased limits since we upload directly to Cloudinary
+        // 500MB for video, 50MB for photo
+        const sizeLimit = contentType === 'video' ? 500 * 1024 * 1024 : 50 * 1024 * 1024;
         
         if (selectedFile.size > sizeLimit) {
-            setError(`File too large. Max ${contentType === 'video' ? '100MB' : '10MB'}.`);
+            setError(`File too large. Max ${contentType === 'video' ? '500MB' : '50MB'}.`);
             return;
         }
 
@@ -127,30 +128,54 @@ const Upload = () => {
     setError('');
     setUploading(true);
     setUploadProgress(0);
-
-    const data = new FormData();
-    data.append(contentType === 'video' ? 'video' : 'photo', file);
-    data.append('title', formData.title);
-    data.append('description', formData.description);
-    if (fileDuration) {
-        data.append('duration', Math.round(fileDuration));
-    }
+    setUploadStage('cloudinary');
 
     try {
-      const api = contentType === 'video' ? videoAPI : photoAPI;
-      const response = await api.upload(data, (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        setUploadProgress(percentCompleted);
-      });
+      let response;
+      
+      if (contentType === 'video') {
+        // Use direct Cloudinary upload for videos (bypasses Vercel's 4.5MB limit)
+        response = await videoAPI.uploadDirect(
+          file, 
+          formData.title, 
+          formData.description,
+          fileDuration ? Math.round(fileDuration) : null,
+          (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+            if (percentCompleted === 100) {
+              setUploadStage('saving');
+            }
+          }
+        );
+        setUploadedId(response.data.video.id);
+      } else {
+        // Use direct Cloudinary upload for photos
+        response = await photoAPI.uploadDirect(
+          file, 
+          formData.title, 
+          formData.description,
+          (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+            if (percentCompleted === 100) {
+              setUploadStage('saving');
+            }
+          }
+        );
+        setUploadedId(response.data.photo.id);
+      }
 
-      setUploadedId(contentType === 'video' ? response.data.video.id : response.data.photo.id);
       setUploading(false);
       setProcessing(true);
+      setUploadStage('processing');
       
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || 'Upload failed');
+      const errorMsg = err.response?.data?.message || err.message || 'Upload failed';
+      setError(errorMsg);
       setUploading(false);
+      setUploadStage('');
     }
   };
 
@@ -192,13 +217,31 @@ const Upload = () => {
           </div>
         )}
 
+        {uploading && (
+          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                {uploadStage === 'cloudinary' && 'Uploading to cloud...'}
+                {uploadStage === 'saving' && 'Saving to database...'}
+              </span>
+              <span className="text-sm font-bold text-blue-700 dark:text-blue-300">{uploadProgress}%</span>
+            </div>
+            <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2.5">
+              <div 
+                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
+
         {!processing ? (
           <form onSubmit={handleSubmit} className="space-y-6">
             
             {/* File Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                {contentType === 'video' ? 'Video File * (Max 100MB)' : 'Photo File * (Max 10MB)'}
+                {contentType === 'video' ? 'Video File * (Max 500MB)' : 'Photo File * (Max 50MB)'}
               </label>
               <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md hover:border-primary-500 transition-colors">
                 <div className="space-y-1 text-center">
@@ -216,12 +259,13 @@ const Upload = () => {
                             accept={contentType === 'video' ? "video/*" : "image/*"}
                             className="sr-only" 
                             onChange={handleFileChange}
+                            disabled={uploading}
                           />
                         </label>
                         <p className="pl-1">or drag and drop</p>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-500">
-                        {contentType === 'video' ? 'MP4, MOV, AVI up to 100MB' : 'PNG, JPG, GIF up to 10MB'}
+                        {contentType === 'video' ? 'MP4, MOV, AVI up to 500MB' : 'PNG, JPG, GIF up to 50MB'}
                       </p>
                     </>
                   ) : (
