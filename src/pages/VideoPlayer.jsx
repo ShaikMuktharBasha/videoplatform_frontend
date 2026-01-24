@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { videoAPI, photoAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Comments from '../components/Comments';
-import { HandThumbUpIcon, HandThumbDownIcon, BookmarkIcon } from '@heroicons/react/24/outline';
+import { HandThumbUpIcon, HandThumbDownIcon, BookmarkIcon, ShieldExclamationIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { HandThumbUpIcon as HandThumbUpSolid, HandThumbDownIcon as HandThumbDownSolid, BookmarkIcon as BookmarkSolid } from '@heroicons/react/24/solid';
 
 const VideoPlayer = () => { // Renaming conceptually to ContentPlayer in comments but keeping component name
@@ -118,10 +118,31 @@ const VideoPlayer = () => { // Renaming conceptually to ContentPlayer in comment
     }
   };
 
-  const getSensitivityBadge = (status) => {
+  const getSensitivityBadge = (status, contentRating) => {
+    // Show content rating badge first
+    if (contentRating === '18+') {
+      return (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-600 text-white">
+            <ShieldExclamationIcon className="w-3 h-3 mr-1" />
+            18+ Content
+          </span>
+          {status === 'adult' && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">Adult/NSFW</span>
+          )}
+          {status === 'horror' && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">Horror</span>
+          )}
+          {status === 'violence' && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">Violence</span>
+          )}
+        </div>
+      );
+    }
+    
     switch (status) {
       case 'safe':
-        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">✓ Safe Content</span>;
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">✓ Public Content</span>;
       case 'flagged':
         return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">⚠ Flagged Content</span>;
       case 'pending':
@@ -129,6 +150,39 @@ const VideoPlayer = () => { // Renaming conceptually to ContentPlayer in comment
       default:
         return null;
     }
+  };
+
+  // Content warning component
+  const ContentWarning = ({ content }) => {
+    const [acknowledged, setAcknowledged] = useState(false);
+    
+    if (content.contentRating !== '18+' || acknowledged) return null;
+    
+    return (
+      <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-10 rounded-lg">
+        <div className="text-center p-6 max-w-md">
+          <ExclamationTriangleIcon className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">Content Warning</h3>
+          <p className="text-gray-300 mb-4">
+            {content.contentWarning || 'This content is rated 18+ and may contain mature content including nudity, horror, violence, or other sensitive material.'}
+          </p>
+          <div className="flex flex-col space-y-2">
+            <button
+              onClick={() => setAcknowledged(true)}
+              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+            >
+              I understand, show content
+            </button>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Go back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -165,7 +219,10 @@ const VideoPlayer = () => { // Renaming conceptually to ContentPlayer in comment
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content Area */}
           <div className="lg:col-span-2">
-            <div className="bg-black rounded-lg overflow-hidden shadow-lg flex items-center justify-center bg-gray-900">
+            <div className="relative bg-black rounded-lg overflow-hidden shadow-lg flex items-center justify-center bg-gray-900">
+               {/* Content Warning Overlay for 18+ content */}
+               <ContentWarning content={content} />
+               
                {isPhoto ? (
                   <img
                     src={content.filepath && content.filepath.startsWith('http') ? content.filepath : `${BASE_URL}/uploads/${content.filename}`}
@@ -197,7 +254,7 @@ const VideoPlayer = () => { // Renaming conceptually to ContentPlayer in comment
                      <span>•</span>
                      <span>{new Date(content.createdAt).toLocaleDateString()}</span>
                   </div>
-                  {getSensitivityBadge(content.sensitivityStatus)}
+                  {getSensitivityBadge(content.sensitivityStatus, content.contentRating)}
                 </div>
                 <div className="flex items-center space-x-2">
                   <button 
@@ -301,18 +358,55 @@ const VideoPlayer = () => { // Renaming conceptually to ContentPlayer in comment
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Content Analysis</p>
                   <div className="mt-1">
-                    {getSensitivityBadge(content.sensitivityStatus)}
+                    {getSensitivityBadge(content.sensitivityStatus, content.contentRating)}
                   </div>
                 </div>
               </div>
             </div>
 
-            {content.sensitivityStatus === 'flagged' && (
+            {/* Detailed content warning based on type */}
+            {content.contentRating === '18+' && (
               <div className="mt-4 bg-red-50 border border-red-200 dark:bg-red-900/30 dark:border-red-800/50 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-red-800 dark:text-red-300 mb-2">⚠ Content Warning</h3>
-                <p className="text-sm text-red-700 dark:text-red-200">
-                  This {contentType} has been flagged by our automated content analysis system. 
-                  It may contain sensitive or inappropriate content.
+                <h3 className="text-lg font-semibold text-red-800 dark:text-red-300 mb-2 flex items-center">
+                  <ShieldExclamationIcon className="w-5 h-5 mr-2" />
+                  18+ Content - Mature Material
+                </h3>
+                <p className="text-sm text-red-700 dark:text-red-200 mb-3">
+                  This {contentType} has been classified as 18+ content by our AI moderation system.
+                </p>
+                {content.moderationAnalysis && (
+                  <div className="text-xs space-y-1">
+                    <p className="font-medium text-red-800 dark:text-red-300">Detection details:</p>
+                    <ul className="list-disc list-inside text-red-700 dark:text-red-200 space-y-0.5">
+                      {content.moderationAnalysis.nudity?.detected && (
+                        <li>Nudity/Adult content detected ({(content.moderationAnalysis.nudity.confidence * 100).toFixed(0)}% confidence)</li>
+                      )}
+                      {content.moderationAnalysis.horror?.detected && (
+                        <li>Horror/Scary content detected ({(content.moderationAnalysis.horror.confidence * 100).toFixed(0)}% confidence)</li>
+                      )}
+                      {content.moderationAnalysis.violence?.detected && (
+                        <li>Violence detected ({(content.moderationAnalysis.violence.confidence * 100).toFixed(0)}% confidence)</li>
+                      )}
+                      {content.moderationAnalysis.gore?.detected && (
+                        <li>Gore content detected ({(content.moderationAnalysis.gore.confidence * 100).toFixed(0)}% confidence)</li>
+                      )}
+                      {content.moderationAnalysis.drugs?.detected && (
+                        <li>Drug-related content detected ({(content.moderationAnalysis.drugs.confidence * 100).toFixed(0)}% confidence)</li>
+                      )}
+                      {content.moderationAnalysis.weapons?.detected && (
+                        <li>Weapons detected ({(content.moderationAnalysis.weapons.confidence * 100).toFixed(0)}% confidence)</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {content.sensitivityStatus === 'flagged' && content.contentRating !== '18+' && (
+              <div className="mt-4 bg-yellow-50 border border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-800/50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-300 mb-2">⚠ Content Under Review</h3>
+                <p className="text-sm text-yellow-700 dark:text-yellow-200">
+                  This {contentType} has been flagged by our automated content analysis system and is under review.
                 </p>
               </div>
             )}

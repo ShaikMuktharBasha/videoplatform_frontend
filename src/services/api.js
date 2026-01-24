@@ -55,6 +55,7 @@ export const videoAPI = {
     return api.get('/videos', { params });
   },
   getPublic: () => api.get('/videos/public'),
+  getAdult: () => api.get('/videos/adult'), // 18+ content (nudity, horror, violence)
   getLiked: () => api.get('/videos/liked'),
   getDisliked: () => api.get('/videos/disliked'),
   getSaved: () => api.get('/videos/saved'),
@@ -87,6 +88,7 @@ export const photoAPI = {
     return api.get('/photos', { params });
   },
   getPublic: () => api.get('/photos/public'),
+  getAdult: () => api.get('/photos/adult'), // 18+ content (nudity, horror, violence)
   getLiked: () => api.get('/photos/liked'),
   getDisliked: () => api.get('/photos/disliked'),
   getSaved: () => api.get('/photos/saved'),

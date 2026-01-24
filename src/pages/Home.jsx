@@ -2,13 +2,16 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { videoAPI, photoAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { PhotoIcon, VideoCameraIcon } from '@heroicons/react/24/outline';
+import { PhotoIcon, VideoCameraIcon, ShieldExclamationIcon } from '@heroicons/react/24/outline';
 import { PlayCircleIcon } from '@heroicons/react/24/solid';
 
 const Home = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [contentType, setContentType] = useState('video'); // 'video' or 'photo'
+  const [ageVerified, setAgeVerified] = useState(false);
+  const [showAgeModal, setShowAgeModal] = useState(false);
+  const [viewingAdult, setViewingAdult] = useState(false);
   const { user, isEditor } = useAuth();
   const navigate = useNavigate();
 
@@ -23,7 +26,7 @@ const Home = () => {
       return;
     }
     fetchContent();
-  }, [user, isEditor, navigate, contentType]);
+  }, [user, isEditor, navigate, contentType, viewingAdult]);
 
   const fetchContent = async () => {
     try {
@@ -32,11 +35,21 @@ const Home = () => {
       
       let fetchedItems = [];
       if (contentType === 'video') {
-         const response = await videoAPI.getPublic();
-         fetchedItems = response.data.videos;
+         if (viewingAdult && ageVerified) {
+           const response = await videoAPI.getAdult();
+           fetchedItems = response.data.videos;
+         } else {
+           const response = await videoAPI.getPublic();
+           fetchedItems = response.data.videos;
+         }
       } else {
-         const response = await photoAPI.getPublic();
-         fetchedItems = response.data.photos;
+         if (viewingAdult && ageVerified) {
+           const response = await photoAPI.getAdult();
+           fetchedItems = response.data.photos;
+         } else {
+           const response = await photoAPI.getPublic();
+           fetchedItems = response.data.photos;
+         }
       }
       
       setItems(fetchedItems);
@@ -47,13 +60,97 @@ const Home = () => {
     }
   };
 
+  const handleAdultToggle = () => {
+    if (!ageVerified && !viewingAdult) {
+      setShowAgeModal(true);
+    } else {
+      setViewingAdult(!viewingAdult);
+    }
+  };
+
+  const confirmAge = () => {
+    setAgeVerified(true);
+    setViewingAdult(true);
+    setShowAgeModal(false);
+  };
+
+  // Content Rating Badge Component
+  const ContentRatingBadge = ({ rating, status }) => {
+    if (rating === '18+' || status === 'adult' || status === 'horror' || status === 'violence') {
+      return (
+        <span className="absolute top-2 right-2 px-2 py-1 bg-red-600 text-white text-xs font-bold rounded-md flex items-center gap-1 z-10">
+          <ShieldExclamationIcon className="w-3 h-3" />
+          18+
+        </span>
+      );
+    }
+    if (rating === 'public' && status === 'safe') {
+      return (
+        <span className="absolute top-2 right-2 px-2 py-1 bg-green-600 text-white text-xs font-bold rounded-md z-10">
+          PUBLIC
+        </span>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="space-y-6">
+      {/* Age Verification Modal */}
+      {showAgeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md mx-4 text-center">
+            <ShieldExclamationIcon className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Age Verification Required</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              This section contains mature content (18+) including nudity, horror, violence, or other sensitive material.
+              By proceeding, you confirm that you are at least 18 years old.
+            </p>
+            <div className="flex space-x-4 justify-center">
+              <button
+                onClick={() => setShowAgeModal(false)}
+                className="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmAge}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                I am 18+
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Community Feed</h1>
+        <div className="flex items-center space-x-4">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Community Feed</h1>
+          {viewingAdult && (
+            <span className="px-3 py-1 bg-red-600 text-white text-sm font-bold rounded-full flex items-center gap-1">
+              <ShieldExclamationIcon className="w-4 h-4" />
+              18+ Content
+            </span>
+          )}
+        </div>
         
-        {/* Content Type Toggle */}
-        <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+        <div className="flex space-x-3">
+          {/* Adult Content Toggle */}
+          <button
+            onClick={handleAdultToggle}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              viewingAdult
+                ? 'bg-red-600 text-white hover:bg-red-700'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            <ShieldExclamationIcon className="w-5 h-5" />
+            <span>{viewingAdult ? 'Exit 18+' : '18+ Content'}</span>
+          </button>
+          
+          {/* Content Type Toggle */}
+          <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
             <button
                 onClick={() => setContentType('video')}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
@@ -76,6 +173,7 @@ const Home = () => {
                 <PhotoIcon className="w-5 h-5" />
                 <span>Photos</span>
             </button>
+          </div>
         </div>
       </div>
 
@@ -96,6 +194,9 @@ const Home = () => {
             >
               {/* Preview */}
               <div className="relative aspect-video bg-gray-100 dark:bg-gray-700 overflow-hidden flex items-center justify-center">
+                {/* Content Rating Badge */}
+                <ContentRatingBadge rating={item.contentRating} status={item.sensitivityStatus} />
+                
                 {item.processingStatus === 'completed' ? (
                    contentType === 'video' ? (
                     <>
@@ -133,9 +234,21 @@ const Home = () => {
                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       by <span className="font-semibold text-gray-900 dark:text-gray-200">{item.user?.name || 'Unknown'}</span>
                    </p>
-                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {item.views || 0} views
-                   </p>
+                   <div className="flex items-center space-x-2">
+                     {/* Show sensitivity status indicator */}
+                     {item.sensitivityStatus === 'horror' && (
+                       <span className="text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded">Horror</span>
+                     )}
+                     {item.sensitivityStatus === 'violence' && (
+                       <span className="text-xs px-2 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 rounded">Violence</span>
+                     )}
+                     {item.sensitivityStatus === 'adult' && (
+                       <span className="text-xs px-2 py-0.5 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded">Adult</span>
+                     )}
+                     <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {item.views || 0} views
+                     </p>
+                   </div>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4 flex-1">
                   {item.description || 'No description'}

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { videoAPI, photoAPI } from '../services/api';
-import { HandThumbUpIcon, HandThumbDownIcon, BookmarkIcon, PhotoIcon, VideoCameraIcon } from '@heroicons/react/24/outline';
+import { HandThumbUpIcon, HandThumbDownIcon, BookmarkIcon, PhotoIcon, VideoCameraIcon, ShieldExclamationIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { HandThumbUpIcon as HandThumbUpSolid, HandThumbDownIcon as HandThumbDownSolid, BookmarkIcon as BookmarkSolid, PlayCircleIcon } from '@heroicons/react/24/solid';
 
 const Dashboard = () => {
@@ -251,16 +251,42 @@ const Dashboard = () => {
                   </div>
                 )}
                 
-                {/* Status Badge */}
-                <span className={`absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded ${
-                  item.sensitivityStatus === 'safe'
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
-                    : item.sensitivityStatus === 'flagged'
-                      ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
-                }`}>
-                  {item.sensitivityStatus === 'safe' ? 'Public' : (item.sensitivityStatus === 'flagged' ? 'Flagged' : 'Processing')}
-                </span>
+                {/* Status Badge - Enhanced for content rating */}
+                <div className="absolute top-2 right-2 flex flex-col gap-1">
+                  {/* Content Rating Badge */}
+                  {item.contentRating === '18+' ? (
+                    <span className="px-2 py-1 text-xs font-bold rounded bg-red-600 text-white flex items-center gap-1">
+                      <ShieldExclamationIcon className="w-3 h-3" />
+                      18+
+                    </span>
+                  ) : item.contentRating === 'public' ? (
+                    <span className="px-2 py-1 text-xs font-bold rounded bg-green-600 text-white">
+                      PUBLIC
+                    </span>
+                  ) : null}
+                  
+                  {/* Processing Status Badge */}
+                  <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                    item.sensitivityStatus === 'safe'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
+                      : item.sensitivityStatus === 'adult'
+                        ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                        : item.sensitivityStatus === 'horror'
+                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300'
+                          : item.sensitivityStatus === 'violence'
+                            ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300'
+                            : item.sensitivityStatus === 'flagged'
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                  }`}>
+                    {item.sensitivityStatus === 'safe' ? 'Safe' 
+                      : item.sensitivityStatus === 'adult' ? 'Adult Content'
+                        : item.sensitivityStatus === 'horror' ? 'Horror'
+                          : item.sensitivityStatus === 'violence' ? 'Violence'
+                            : item.sensitivityStatus === 'flagged' ? 'Flagged' 
+                              : 'Processing'}
+                  </span>
+                </div>
               </div>
               
               <div className="p-4 flex-1 flex flex-col">
@@ -285,8 +311,30 @@ const Dashboard = () => {
                 </div>
 
                 <div className="mt-auto pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
-                   <span>{item.views || 0} views</span>
-                   <span>{(item.likes || []).length} likes</span>
+                   <div className="flex items-center space-x-3">
+                     <span className="flex items-center gap-1">
+                       <EyeIcon className="w-4 h-4" />
+                       {item.views || 0}
+                     </span>
+                     <span>{(item.likes || []).length} likes</span>
+                   </div>
+                   {/* Show analysis info for 18+ content */}
+                   {item.contentRating === '18+' && item.moderationAnalysis && (
+                     <div className="flex items-center space-x-1 text-xs">
+                       {item.moderationAnalysis.nudity?.detected && (
+                         <span className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded">Nudity</span>
+                       )}
+                       {item.moderationAnalysis.horror?.detected && (
+                         <span className="px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 rounded">Horror</span>
+                       )}
+                       {item.moderationAnalysis.violence?.detected && (
+                         <span className="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 rounded">Violence</span>
+                       )}
+                       {item.moderationAnalysis.gore?.detected && (
+                         <span className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded">Gore</span>
+                       )}
+                     </div>
+                   )}
                 </div>
               </div>
             </div>
