@@ -48,6 +48,7 @@ const uploadToCloudinary = async (file, signatureData, onProgress) => {
   formData.append('timestamp', signatureData.timestamp);
   formData.append('signature', signatureData.signature);
   formData.append('folder', signatureData.folder);
+  formData.append('moderation', signatureData.moderation);
   
   const uploadUrl = `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/${signatureData.resourceType}/upload`;
   
