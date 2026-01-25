@@ -296,9 +296,12 @@ const Upload = () => {
                 required
                 value={formData.title}
                 onChange={handleChange}
-                placeholder={`Enter ${contentType} title`}
+                placeholder={contentType === 'video' ? 'Describe your video (e.g., funny cat, nature, cooking tutorial)' : 'Describe your photo in one keyword (e.g., sunset, portrait, food)'}
                 className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm py-2 px-3"
               />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                ⚠️ Use descriptive keywords. Content is auto-moderated based on title. Misleading titles may result in account action.
+              </p>
             </div>
 
             {/* Description */}
