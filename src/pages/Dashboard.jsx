@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { videoAPI, photoAPI } from '../services/api';
-import { HandThumbUpIcon, HandThumbDownIcon, BookmarkIcon, PhotoIcon, VideoCameraIcon, ShieldExclamationIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { HandThumbUpIcon, HandThumbDownIcon, BookmarkIcon, PhotoIcon, VideoCameraIcon, ShieldExclamationIcon, EyeIcon, ChatBubbleLeftIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { HandThumbUpIcon as HandThumbUpSolid, HandThumbDownIcon as HandThumbDownSolid, BookmarkIcon as BookmarkSolid, PlayCircleIcon } from '@heroicons/react/24/solid';
 
 const Dashboard = () => {
@@ -121,6 +121,59 @@ const Dashboard = () => {
         console.error('Error deleting item:', error);
       }
     }
+  };
+
+  const handleLike = async (e, id) => {
+    e.preventDefault();
+    try {
+      if (contentType === 'video') {
+        await videoAPI.toggleLike(id);
+      } else {
+        await photoAPI.toggleLike(id);
+      }
+      fetchContent();
+    } catch (error) {
+      console.error('Error liking item:', error);
+    }
+  };
+
+  const handleDislike = async (e, id) => {
+    e.preventDefault();
+    try {
+      if (contentType === 'video') {
+        await videoAPI.toggleDislike(id);
+      } else {
+        await photoAPI.toggleDislike(id);
+      }
+      fetchContent();
+    } catch (error) {
+      console.error('Error disliking item:', error);
+    }
+  };
+
+  const handleSave = async (e, id) => {
+    e.preventDefault();
+    try {
+      if (contentType === 'video') {
+        await videoAPI.toggleSave(id);
+      } else {
+        await photoAPI.toggleSave(id);
+      }
+      fetchContent();
+    } catch (error) {
+      console.error('Error saving item:', error);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
@@ -296,8 +349,44 @@ const Dashboard = () => {
                         {item.title}
                         </h3>
                     </Link>
-                    <div className="flex space-x-2">
-                        {/* Edit/Delete Actions */}
+                    <div className="flex space-x-1 items-center">
+                        <button
+                          onClick={(e) => handleLike(e, item._id)}
+                          className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
+                          title={item.likes?.includes(user?._id) ? "Unlike" : "Like"}
+                        >
+                          {item.likes?.includes(user?._id) ? (
+                            <HandThumbUpSolid className="w-5 h-5 text-primary-600" />
+                          ) : (
+                            <HandThumbUpIcon className="w-5 h-5" />
+                          )}
+                        </button>
+                        
+                        <button
+                          onClick={(e) => handleDislike(e, item._id)}
+                          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                          title={item.dislikes?.includes(user?._id) ? "Remove Dislike" : "Dislike"}
+                        >
+                          {item.dislikes?.includes(user?._id) ? (
+                            <HandThumbDownSolid className="w-5 h-5 text-red-600" />
+                          ) : (
+                            <HandThumbDownIcon className="w-5 h-5" />
+                          )}
+                        </button>
+
+                        <button
+                          onClick={(e) => handleSave(e, item._id)}
+                          className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                          title={item.isSaved ? "Unsave" : "Save"}
+                        >
+                          {item.isSaved ? (
+                            <BookmarkSolid className="w-5 h-5 text-blue-600" />
+                          ) : (
+                            <BookmarkIcon className="w-5 h-5" />
+                          )}
+                        </button>
+
+                        {/* Delete Action */}
                         <button 
                             onClick={(e) => handleDelete(e, item._id)}
                             className="text-gray-400 hover:text-red-500 transition-colors"
@@ -310,13 +399,28 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                <div className="mt-auto pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
-                   <div className="flex items-center space-x-3">
-                     <span className="flex items-center gap-1">
-                       <EyeIcon className="w-4 h-4" />
-                       {item.views || 0}
-                     </span>
-                     <span>{(item.likes || []).length} likes</span>
+                <div className="mt-auto pt-3 border-t border-gray-100 dark:border-gray-700 flex flex-col gap-2 text-sm text-gray-500 dark:text-gray-400">
+                   <div className="flex justify-between items-center">
+                     <div className="flex items-center space-x-3">
+                       <span className="flex items-center gap-1" title="Views">
+                         <EyeIcon className="w-4 h-4" />
+                         {item.views || 0}
+                       </span>
+                       <span className="flex items-center gap-1" title="Likes">
+                         <HandThumbUpIcon className="w-4 h-4" />
+                         {(item.likes || []).length}
+                       </span>
+                       {contentType === 'video' && (
+                           <span className="flex items-center gap-1" title="Comments">
+                             <ChatBubbleLeftIcon className="w-4 h-4" />
+                             {item.commentsCount || 0}
+                           </span>
+                       )}
+                     </div>
+                     <div className="flex items-center gap-1 text-xs text-gray-400" title="Uploaded at">
+                        <ClockIcon className="w-3 h-3" />
+                        {formatDate(item.createdAt)}
+                     </div>
                    </div>
                    {/* Show analysis info for 18+ content */}
                    {item.contentRating === '18+' && item.moderationAnalysis && (
